@@ -1233,6 +1233,43 @@ class MX(RD):
 
     attrs = ('preference','label')
 
+class DS(RD):
+    key_tag = H('key_tag')
+    algorithm = B('algorithm')
+    digest_type = B('digest_type')
+
+    @classmethod
+    def parse(cls,buffer,length):
+        try:
+            (key_tag,algorithm,digest_type,digest) = buffer.unpack("!HBB")
+            digest = buffer.get(length-4)
+            return cls(ds,key_tag,algorithm,digest_type,digest)
+        except (BufferError,BimapError) as e:
+            raise DNSError("Error unpacking DS [offset=%d]: %s" % 
+                                        (buffer.offset,e))
+
+    @classmethod
+    def fromZone(cls,rd,origin=None):
+        return cls(int(rd[0]),int(rd[1]),int(rd[2]),
+                   base64.b64decode(("".join(rd[3:])).encode('ascii')))
+
+
+    def __init__(self,key_tag,algorithm,digest_type,digest):
+        self.key_tag = key_tag
+        self.algorithm = algorithm
+        self.digest_type = digest_type
+        self.digest = digest
+
+    def pack(self,buffer):
+        buffer.pack("!HBB",self.key_tag,self.algorithm,self.digest_type)
+        buffer.append(self.digest)
+        
+    def __repr__(self):
+        return "%d %d %d %s" % (self.key_tag,self.algorithm,self.digest_type,
+                                base64.b64encode(self.digest).decode())
+
+    attrs = ('key_tag','algorithm', 'digest_type', 'digest')
+
 class CNAME(RD):
         
     @classmethod
@@ -1446,7 +1483,6 @@ class NAPTR(RD):
     attrs = ('order','preference','flags','service','regexp','replacement')
 
 class DNSKEY(RD):
-
     flags = H('flags')
     protocol = B('protocol')
     algorithm = B('algorithm')
@@ -1617,7 +1653,7 @@ class CAA(RD):
 
 RDMAP = { 'CNAME':CNAME, 'A':A, 'AAAA':AAAA, 'TXT':TXT, 'MX':MX, 
           'PTR':PTR, 'SOA':SOA, 'NS':NS, 'NAPTR': NAPTR, 'SRV':SRV,
-          'DNSKEY':DNSKEY, 'RRSIG':RRSIG, 'CAA':CAA
+          'DNSKEY':DNSKEY, 'RRSIG':RRSIG, 'CAA':CAA, 'DS':DS
         }
 
 ##
