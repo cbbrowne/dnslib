@@ -1241,9 +1241,10 @@ class DS(RD):
     @classmethod
     def parse(cls,buffer,length):
         try:
-            (key_tag,algorithm,digest_type,digest) = buffer.unpack("!HBB")
+            (key_tag,algorithm,digest_type,digest,digestext) = buffer.unpack("!HBB")
             digest = buffer.get(length-4)
-            return cls(ds,key_tag,algorithm,digest_type,digest)
+            digestext = buffer.get(length-(4+length(digest)))
+            return cls(ds,key_tag,algorithm,digest_type,"%s %s" % (digest,digestext))
         except (BufferError,BimapError) as e:
             raise DNSError("Error unpacking DS [offset=%d]: %s" % 
                                         (buffer.offset,e))
@@ -1252,7 +1253,6 @@ class DS(RD):
     def fromZone(cls,rd,origin=None):
         return cls(int(rd[0]),int(rd[1]),int(rd[2]),
                    base64.b64decode(("".join(rd[3:])).encode('ascii')))
-
 
     def __init__(self,key_tag,algorithm,digest_type,digest):
         self.key_tag = key_tag
